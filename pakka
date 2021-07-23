@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+set -eEu
+set -o pipefail
+IFS=$'\n\t'
 
 CONFIGDIR=${CONFIGDIR:-$HOME/.config/pakka}
 source $CONFIGDIR/config
@@ -22,6 +25,9 @@ install() {
     fi
     tar -zxvf $CACHEDIR/archive/$i.tar.gz -C $CACHEDIR/packaging
     cd $SRCDIR
+    less PKGBUILD
+    read -p "Continue? " prompt
+    [[ $prompt == "n" ]] || [[ $prompt == "no" ]] && exitm 1
     if [ -d $CONFIGDIR/overrides/$i/srcpatch ];
     then
         echo "Patching..."
@@ -35,15 +41,30 @@ install() {
         done
     fi
 
+    
     if [ -d $CONFIGDIR/overrides/$i/srccopy ];
     then
 	cp -rv $CONFIGDIR/overrides/$i/srccopy/* $SRCDIR
     fi
+    makepkg -o
     if [ -d $CONFIGDIR/overrides/$i/copy ];
     then
 	cp -rv $CONFIGDIR/overrides/$i/copy/* $SRCDIR/src
     fi
-
+    cd src/
+    if [ -d $CONFIGDIR/overrides/$i/patch ];
+    then
+        echo "Patching..."
+        for j in $(ls "$CONFIGDIR/overrides/$i/patch");
+        do
+	    patch < "$CONFIGDIR/overrides/$i/patch/$j" &&
+	        echo "Patched $j !" || {
+                    read -p "Failed Patch $j! Do you want to continue without it? " prompt;
+                    [[ $prompt == "n" ]] || [[ $prompt == "no" ]] && exitm 1
+                }
+        done
+    fi
+    cd ..
     makepkg -sci || {
 	read -p "Do you want to disable verify checks? " prompt;
 	if [[ $prompt == "y" ]];
