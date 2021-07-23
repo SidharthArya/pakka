@@ -39,7 +39,7 @@ install() {
 	cp -rv $CONFIGDIR/$i/copy/* $SRCDIR
     fi
 
-    makepkg -sci || {
+    makepkg --verbose -sci || {
 	read -p "Do you want to disable verify checks? " prompt;
 	if [[ $prompt == "y" ]];
 	then
