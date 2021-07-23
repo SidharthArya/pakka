@@ -3,7 +3,7 @@
 
 [Currently Experimental]
 
-A simple bash based AUR helper for Archlinux.
+A simple bash based AUR helper for Arch Linux.
 
 * Introduction
 Pakka? is an indian way of asking "Are you sure?". Perhaps I am asking to the users are you sure you want to use this :P
