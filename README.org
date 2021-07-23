@@ -1,0 +1,27 @@
+#+TITLE: Pakka
+#+AUTHOR: Sidharth Arya
+
+[Currently Experimental]
+
+A simple bash based AUR helper for Archlinux.
+
+* Introduction
+Pakka? is an indian way of asking "Are you sure?". Perhaps I am asking to the users are you sure you want to use this :P
+Pakka tries to achieve maximum customization for the user. 
+
+
+* Goals
+My goal with this package is to create a very very flexible and customizable AUR helper written purely in bash in as minimum lines of code as possible.
+
+Adding more lines of code for good features will always be appreciated though.
+
+What do I eventually want?
++ [ ] Ability to override already existing AUR makefiles with your own, or patching them to suit your use case.
++ [ ] Ability to easily patch the source without the need for explicitely having patch codes in the aur makefiles
++ [ ] Eventually move to per block diffs for customizing AUR PKGBUILD's
++ [ ] Become a pacman complient AUR wrapper
+
+* Lacking Features
++ [ ] Searching the AUR database
++ [ ] Dependency Resolution
+* TODO Getting Started

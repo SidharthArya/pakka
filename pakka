@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+CONFIGDIR=${CONFIGDIR:-$HOME/.config/pakka}
+source $CONFIGDIR/config
+CWD=$(pwd)
+
+mkdir -p $CACHEDIR/archive
+mkdir -p $CACHEDIR/packages
+
+exitm() {
+    cd $CWD
+    exit $1
+}
+
+install() {
+    i=$1;
+    SRCDIR=$CACHEDIR/packages/$i
+    if ! [ -f $CACHEDIR/archive/$i.tar.gz ];
+    then
+        curl --output $CACHEDIR/archive/$i.tar.gz https://aur.archlinux.org/cgit/aur.git/snapshot/$i.tar.gz
+    fi
+    tar -zxvf $CACHEDIR/archive/$i.tar.gz -C $SRCDIR
+    cd $SRCDIR
+    if [ -d $CONFIGDIR/overrides/$i/srcpatch ];
+    then
+        echo "Patching..."
+        for j in $(ls "../config/$i/srcpatch");
+        do
+	    patch < "../config/$i/srcpatch/$j" &&
+	        echo "Patched $j !" || {
+                    read -p "Failed Patch $j! Do you want to continue without it? " prompt;
+                    [[ $prompt == "n" ]] || [[ $prompt == "no" ]] && exitm 1
+                }
+        done
+    fi
+
+    if [ -d $CONFIGDIR/$i/copy ];
+    then
+	cp -rv $CONFIGDIR/$i/copy/* $SRCDIR
+    fi
+
+    makepkg -sci || {
+	read -p "Do you want to disable verify checks? " prompt;
+	if [[ $prompt == "y" ]];
+	then
+	    makepkg -sci --skipinteg;
+	fi
+    }
+}
+
+ARGS=$*
+if [[ -z $ARGS ]]
+then
+    for i in $(cat Packages);
+    do
+	install $i
+    done
+else
+    for i in $ARGS;
+    do
+	install $i;
+    done
+fi
