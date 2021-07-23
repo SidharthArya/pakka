@@ -4,69 +4,69 @@ set -o pipefail
 IFS=$'\n\t'
 
 CONFIGDIR=${CONFIGDIR:-$HOME/.config/pakka}
-source $CONFIGDIR/config
+source "$CONFIGDIR/config"
 CWD=$(pwd)
 
-mkdir -p $CACHEDIR/archive
-mkdir -p $CACHEDIR/packaging
-mkdir -p $CACHEDIR/packages
+mkdir -p "$CACHEDIR/archive"
+mkdir -p "$CACHEDIR/packaging"
+mkdir -p "$CACHEDIR/packages"
 
 exitm() {
-    cd $CWD
-    exit $1
+    cd "$CWD"
+    exit "$1"
 }
 
 install() {
     i=$1;
     SRCDIR=$CACHEDIR/packaging/$i
-    if ! [ -f $CACHEDIR/archive/$i.tar.gz ];
+    if ! [ -f "$CACHEDIR/archive/$i.tar.gz" ];
     then
-        curl --output $CACHEDIR/archive/$i.tar.gz https://aur.archlinux.org/cgit/aur.git/snapshot/$i.tar.gz
+        curl --output "$CACHEDIR/archive/$i.tar.gz" "https://aur.archlinux.org/cgit/aur.git/snapshot/$i.tar.gz"
     fi
-    tar -zxvf $CACHEDIR/archive/$i.tar.gz -C $CACHEDIR/packaging
-    cd $SRCDIR
+    tar -zxvf "$CACHEDIR/archive/$i.tar.gz" -C "$CACHEDIR/packaging"
+    cd "$SRCDIR"
     less PKGBUILD
-    read -p "Continue? " prompt
+    read -rp "Continue? " prompt
     [[ $prompt == "n" ]] || [[ $prompt == "no" ]] && exitm 1
-    if [ -d $CONFIGDIR/overrides/$i/srcpatch ];
+    if [ -d "$CONFIGDIR/overrides/$i/srcpatch" ];
     then
         echo "Patching..."
-        for j in $(ls "$CONFIGDIR/overrides/$i/srcpatch");
+        for j in "$CONFIGDIR/overrides/$i/srcpatch"/**;
         do
 	    patch < "$CONFIGDIR/overrides/$i/srcpatch/$j" &&
 	        echo "Patched $j !" || {
-                    read -p "Failed Patch $j! Do you want to continue without it? " prompt;
+                    read -rp "Failed Patch $j! Do you want to continue without it? " prompt;
                     [[ $prompt == "n" ]] || [[ $prompt == "no" ]] && exitm 1
                 }
         done
     fi
 
     
-    if [ -d $CONFIGDIR/overrides/$i/srccopy ];
+    if [ -d $"CONFIGDIR/overrides/$i/srccopy" ];
     then
-	cp -rv $CONFIGDIR/overrides/$i/srccopy/* $SRCDIR
+	cp -rv "$CONFIGDIR/overrides/$i/srccopy"/* "$SRCDIR"
     fi
     makepkg -o
-    if [ -d $CONFIGDIR/overrides/$i/copy ];
+    if [ -d "$CONFIGDIR/overrides/$i/copy" ];
     then
-	cp -rv $CONFIGDIR/overrides/$i/copy/* $SRCDIR/src
+	cp -rv "$CONFIGDIR/overrides/$i/copy"/* "$SRCDIR/src"
     fi
     cd src/
-    if [ -d $CONFIGDIR/overrides/$i/patch ];
+    if [ -d "$CONFIGDIR/overrides/$i/patch" ];
     then
         echo "Patching..."
-        for j in $(ls "$CONFIGDIR/overrides/$i/patch");
+        for j in "$CONFIGDIR/overrides/$i/patch"/**;
         do
 	    patch < "$CONFIGDIR/overrides/$i/patch/$j" &&
 	        echo "Patched $j !" || {
-                    read -p "Failed Patch $j! Do you want to continue without it? " prompt;
+                    read -rp "Failed Patch $j! Do you want to continue without it? " prompt;
                     [[ $prompt == "n" ]] || [[ $prompt == "no" ]] && exitm 1
                 }
         done
     fi
     cd ..
     makepkg -sci || {
-	read -p "Do you want to disable verify checks? " prompt;
+	read -rp "Do you want to disable verify checks? " prompt;
 	if [[ $prompt == "y" ]];
 	then
 	    makepkg -sci --skipinteg;
@@ -77,7 +77,7 @@ install() {
 ARGS=$*
 if [[ -z $ARGS ]]
 then
-    for i in $(cat $CONFIGDIR/Packages);
+    for i in $(cat "$CONFIGDIR/Packages");
     do
 	install $i
     done

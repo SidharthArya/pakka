@@ -54,6 +54,8 @@ This override will copy files as it is to your aur package snapshot.
 This override will patch your aur package snapshot directory.
 *** copy
 This override will copy files as it is to the package source directory.
+*** patch
+This override will patch your package source directory.
 ** Example
 https://github.com/SidharthArya/pakka-config
 * Contributing
