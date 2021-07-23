@@ -19,7 +19,7 @@ install() {
     then
         curl --output $CACHEDIR/archive/$i.tar.gz https://aur.archlinux.org/cgit/aur.git/snapshot/$i.tar.gz
     fi
-    tar -zxvf $CACHEDIR/archive/$i.tar.gz -C $SRCDIR
+    tar -zxvf $CACHEDIR/archive/$i.tar.gz -C $SRCDIR/..
     cd $SRCDIR
     if [ -d $CONFIGDIR/overrides/$i/srcpatch ];
     then
@@ -51,7 +51,7 @@ install() {
 ARGS=$*
 if [[ -z $ARGS ]]
 then
-    for i in $(cat Packages);
+    for i in $(cat $CONFIGDIR/Packages);
     do
 	install $i
     done
