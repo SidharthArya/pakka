@@ -5,6 +5,7 @@ source $CONFIGDIR/config
 CWD=$(pwd)
 
 mkdir -p $CACHEDIR/archive
+mkdir -p $CACHEDIR/packaging
 mkdir -p $CACHEDIR/packages
 
 exitm() {
@@ -14,12 +15,12 @@ exitm() {
 
 install() {
     i=$1;
-    SRCDIR=$CACHEDIR/packages/$i
+    SRCDIR=$CACHEDIR/packaging/$i
     if ! [ -f $CACHEDIR/archive/$i.tar.gz ];
     then
         curl --output $CACHEDIR/archive/$i.tar.gz https://aur.archlinux.org/cgit/aur.git/snapshot/$i.tar.gz
     fi
-    tar -zxvf $CACHEDIR/archive/$i.tar.gz -C $CACHEDIR/packages
+    tar -zxvf $CACHEDIR/archive/$i.tar.gz -C $CACHEDIR/packaging
     cd $SRCDIR
     if [ -d $CONFIGDIR/overrides/$i/srcpatch ];
     then
@@ -39,7 +40,7 @@ install() {
 	cp -rv $CONFIGDIR/$i/copy/* $SRCDIR
     fi
 
-    makepkg --verbose -sci || {
+    makepkg -sci || {
 	read -p "Do you want to disable verify checks? " prompt;
 	if [[ $prompt == "y" ]];
 	then
