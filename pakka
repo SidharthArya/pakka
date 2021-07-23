@@ -35,9 +35,13 @@ install() {
         done
     fi
 
-    if [ -d $CONFIGDIR/$i/copy ];
+    if [ -d $CONFIGDIR/overrides/$i/srccopy ];
     then
-	cp -rv $CONFIGDIR/$i/copy/* $SRCDIR
+	cp -rv $CONFIGDIR/overrides/$i/copy/* $SRCDIR
+    fi
+    if [ -d $CONFIGDIR/overrides/$i/copy ];
+    then
+	cp -rv $CONFIGDIR/overrides/$i/copy/* $SRCDIR/src
     fi
 
     makepkg -sci || {

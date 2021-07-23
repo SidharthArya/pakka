@@ -24,4 +24,35 @@ What do I eventually want?
 * Lacking Features
 + [ ] Searching the AUR database
 + [ ] Dependency Resolution
-* TODO Getting Started
++ [ ] Autocleaning build directory
+*  Getting Started
+Download the pakka script and place it in your PATH.
+#+begin_src bash
+  curl --output ~/.local/bin/pakka https://raw.githubusercontent.com/SidharthArya/pakka/master/pakka
+  chown +x ~/.local/bin/pakka
+#+end_src
+At the moment, you do not pass any flags to the pakka script. Just the name of the packages you want to install.
+#+begin_src bash
+pakka st dwm
+#+end_src
+Incase you just want to build the package you can just run the script with curl
+#+begin_src bash
+  curl https://raw.githubusercontent.com/SidharthArya/pakka/master/pakka | bash -s st dwm
+#+end_src
+
+* Configuration
+Pakka reads ~~/.config/pakka/config~ file and sources it for environment variables. Not much is implemented for configuration at the moment. You can only define a ~CACHEDIR~ variable as ~CACHEDIR=~/.cache/pakka~. In any case that would default to the same location.
+
+Then you have a ~~/.config/pakka/Packages~, which is intended to store a list of default packages you may want to install. Running ~pakka~ without any package name should install all the packages in Packages file.
+
+** Overrides
+Overrides are files present in the folder ~~/.config/overrides/package-name~
+*** srccopy
+This override will copy files as it is to your aur package snapshot.
+
+*** srcpatch
+This override will patch your aur package snapshot directory.
+*** copy
+This override will copy files as it is to the package source directory.
+* Contributing
+I am looking for people to help me develop this script really well. Feel free to open pull requests and issues for various things you want to see implemented in pakka.
