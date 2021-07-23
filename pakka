@@ -37,7 +37,7 @@ install() {
 
     if [ -d $CONFIGDIR/overrides/$i/srccopy ];
     then
-	cp -rv $CONFIGDIR/overrides/$i/copy/* $SRCDIR
+	cp -rv $CONFIGDIR/overrides/$i/srccopy/* $SRCDIR
     fi
     if [ -d $CONFIGDIR/overrides/$i/copy ];
     then
