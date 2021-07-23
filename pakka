@@ -25,9 +25,9 @@ install() {
     if [ -d $CONFIGDIR/overrides/$i/srcpatch ];
     then
         echo "Patching..."
-        for j in $(ls "../config/$i/srcpatch");
+        for j in $(ls "$CONFIGDIR/overrides/$i/srcpatch");
         do
-	    patch < "../config/$i/srcpatch/$j" &&
+	    patch < "$CONFIGDIR/overrides/$i/srcpatch/$j" &&
 	        echo "Patched $j !" || {
                     read -p "Failed Patch $j! Do you want to continue without it? " prompt;
                     [[ $prompt == "n" ]] || [[ $prompt == "no" ]] && exitm 1
