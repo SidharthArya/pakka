@@ -1,42 +1,77 @@
 #!/usr/bin/env bash
-set -eEu
-set -o pipefail
-IFS=$'\n\t'
+# what the hell there's no comments???
+# pakka - simple aur helper
+set -eEu # what the hell is that?
+set -o pipefail # another crappy useless command???
+IFS=$'\n\t' # please remove those commands
+SELF=pakka
+SELF_PROG=$0
 
 CONFIGDIR=${CONFIGDIR:-$HOME/.config/pakka}
-source "$CONFIGDIR/config"
-CWD=$(pwd)
+# well, we need to tell the user, where config file doesn't exists
+if [ ! -f "$CONFIGDIR/config" ]; then
+	echo "$SELF: Cannot load config file. Exiting"
+	exit 1
+fi
+. "$CONFIGDIR/config" # dot is much simplier than source and it's limited to bash and kornshell
+# CWD=$(pwd) # this is't needed as after script will exit, shell will go back to dir where script was started
 
 mkdir -p "$CACHEDIR/archive"
 mkdir -p "$CACHEDIR/packaging"
 mkdir -p "$CACHEDIR/packages"
 
+msg_info()
+{
+	echo "[INFO] $*"
+}
+
+msg_error()
+{
+	echo "[ERROR] $*"
+	exit 1
+}
+
+msg_warn()
+{
+	echo "[WARNING] $*"
+}
+
 exitm() {
-    cd "$CWD"
     exit "$1"
 }
 
+
 install() {
-    i=$1;
+    i="$1"
+    msg_info "Building $i"
     SRCDIR=$CACHEDIR/packaging/$i
-    if ! [ -f "$CACHEDIR/archive/$i.tar.gz" ];
-    then
-        curl --output "$CACHEDIR/archive/$i.tar.gz" "https://aur.archlinux.org/cgit/aur.git/snapshot/$i.tar.gz"
+    if [ ! -f "$CACHEDIR/archive/$i.tar.gz" ]; then
+        curl -L -o "$CACHEDIR/archive/$i.tar.gz" "https://aur.archlinux.org/cgit/aur.git/snapshot/$i.tar.gz"
     fi
-    tar -zxvf "$CACHEDIR/archive/$i.tar.gz" -C "$CACHEDIR/packaging"
+    tar xzf "$CACHEDIR/archive/$i.tar.gz" -C "$CACHEDIR/packaging"
     cd "$SRCDIR"
-    less PKGBUILD
-    read -rp "Continue? " prompt
-    [[ $prompt == "n" ]] || [[ $prompt == "no" ]] && exitm 1
+    echo -n "$SELF: Wanna see PKGBUILD? [y/n] "
+    read q1
+    if [ "$q1" == "y" ]; then
+    	less PKGBUILD
+    fi
+    echo -n "$SELF: Start building ${i}? [y/n] "
+    read prompt
+    if [ ! "$prompt" == "y" ]; then
+    	msg_error Interrupted!
+    fi
     if [ -d "$CONFIGDIR/overrides/$i/srcpatch" ];
     then
-        echo "Patching..."
-        for j in "$CONFIGDIR/overrides/$i/srcpatch"/**;
+        msg_info "Patching"
+        for j in "$(ls $CONFIGDIR/overrides/$i/srcpatch/)";
         do
-	    patch < "$CONFIGDIR/overrides/$i/srcpatch/$j" &&
-	        echo "Patched $j !" || {
-                    read -rp "Failed Patch $j! Do you want to continue without it? " prompt;
-                    [[ $prompt == "n" ]] || [[ $prompt == "no" ]] && exitm 1
+	    patch -p1 < "$CONFIGDIR/overrides/$i/srcpatch/$j"
+	        msg_info "Patched $j !" || {
+                    echo -n "$SELF: Failed to patch. Ignore it and continue? [y/n] "
+		    read prompt2
+                    if [ ! "$prompt2" == "y" ]; then
+		    	msg_error Interrupted
+		    fi
                 }
         done
     fi
@@ -44,21 +79,21 @@ install() {
     
     if [ -d $"CONFIGDIR/overrides/$i/srccopy" ];
     then
-	cp -rv "$CONFIGDIR/overrides/$i/srccopy"/* "$SRCDIR"
+	cp -rv "$CONFIGDIR/overrides/$i/srccopy/*" "$SRCDIR" # i don't know why everything is doing so useless code parts. every path sould be double quoted
     fi
     makepkg -o
     if [ -d "$CONFIGDIR/overrides/$i/copy" ];
     then
-	cp -rv "$CONFIGDIR/overrides/$i/copy"/* "$SRCDIR/src"
+	cp -rv "$CONFIGDIR/overrides/$i/copy/*" "$SRCDIR/src" # again...
     fi
     cd src/
     if [ -d "$CONFIGDIR/overrides/$i/patch" ];
     then
-        echo "Patching..."
-        for j in "$CONFIGDIR/overrides/$i/patch"/**;
+        msg_info "Patching"
+        for j in "$(ls $CONFIGDIR/overrides/$i/patch/)" #; # agaaaaain
         do
 	    patch < "$CONFIGDIR/overrides/$i/patch/$j" &&
-	        echo "Patched $j !" || {
+	        msg_info "Patched $j !" || {
                     read -rp "Failed Patch $j! Do you want to continue without it? " prompt;
                     [[ $prompt == "n" ]] || [[ $prompt == "no" ]] && exitm 1
                 }
@@ -66,7 +101,7 @@ install() {
     fi
     cd ..
     makepkg -sci || {
-	read -rp "Do you want to disable verify checks? " prompt;
+	read -rp "$SELF: Do you want to disable verify checks? [y/n] " prompt
 	if [[ $prompt == "y" ]];
 	then
 	    makepkg -sci --skipinteg;
