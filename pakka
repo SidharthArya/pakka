@@ -39,8 +39,30 @@ exitm() {
     exit "$1"
 }
 
+
 flags_process() {
     ARG1="$1"
+    C=0
+    F=""
+    TEMP=""
+    for i in $(echo $ARG1 | sed -e 's/\(.\)/\1\n/g');
+    do
+        if [[ $i == "-" ]]; then
+            if [[ $C == 2 ]]; then
+                C=1
+                F+=$TEMP
+                TEMP=""
+            else
+                C=2
+            fi
+        else
+            if [[ $C == 1 ]];then
+                F+="-$i"
+            else
+                TEMP+=$i
+            fi
+        fi
+    done
     [[ "$ARG1" == *"--sync"* ]] || [[ "$ARG1" == *!(-)"-S"* ]] && SYNC=true
     [[ "$ARG1" == *"--search"* ]] || [[ "$ARG1" == *!(-)"-s"* ]] && SEARCH=true
     [[ "$ARG1" == *"--update"* ]] || [[ "$ARG1" == *!(-)"-u"* ]] && UPDATE=true
@@ -56,7 +78,7 @@ exit
 }
 
 search() {
-    exit
+    curl -s "https://aur.archlinux.org/rpc/?v=5&type=search&arg=$1" | jq '.results[] | {Name,Description}'
 }
 
 install() {
@@ -153,18 +175,21 @@ else
     for i in $ARGS;
     do
         [[ $(echo $i | cut -c 1) == "-" ]] && FLAGS+="${i}" || PACKAGES+="$i "
-
     done
     # parsing flags
     SYNC=false
     SEARCH=false
     UPDATE=false
     [[ -z $FLAGS ]] && FLAGS="-S"
-    echo $FLAGS
+    # echo $FLAGS
     flags_process $FLAGS
-    echo $SYNC $SEARCH $UPDATE
-    if $SYNC;
-    then
+    # echo $SYNC $SEARCH $UPDATE
+    if $SEARCH; then
+        for i in "$(echo $PACKAGES | sed 's/ /\n/g')";
+        do
+            search $i
+        done
+    elif $SYNC; then
         for i in "$(echo $PACKAGES | sed 's/ /\n/g')";
         do
             install $i
