@@ -1,23 +1,32 @@
 #!/usr/bin/env bash
-# pakka - An AUR/custom helper for Arch Linux
-set -eEu
-set -o pipefail
-IFS=$'\n\t'
-SELF=Pakka
+# what the hell there's no comments???
+# pakka - simple aur helper
+SELF=pakka
 SELF_PROG=$0
-CWD=$(pwd)
+SELF_VER=1.2
 
 CONFIGDIR=${CONFIGDIR:-$HOME/.config/pakka}
-# When the config file doesn't exists, exit.
-if [[ ! -f "$CONFIGDIR/config" ]]; then
-	echo "$SELF: Cannot load config file. Exiting"
+if [ ! -f "$CONFIGDIR/config" ]; then
+	echo "$SELF: Config file doesn't seems to exists, so using the defaults"
+fi
+CACHEDIR="${HOME}/.pakka_cache" # not all people write config files, this is the default CACHEDIR
+if [ -f "$CONFIGDIR/config" ]; then
+	. "$CONFIGDIR/config"
+fi
+if [ ! -f "/usr/bin/package-query" ]; then
+	echo "$SELF: Cannot find package-query on your system!"
+	echo "$SELF: Please install package-query and rerun the script"
 	exit 1
 fi
 
-. "$CONFIGDIR/config"
-
+mkdir -p "$CACHEDIR/archive"
 mkdir -p "$CACHEDIR/packaging"
-mkdir -p "$CACHEDIR/packages"
+
+die()
+{
+    echo "[FATAL ERROR] $*"
+    exit 1
+}
 
 msg_info()
 {
@@ -39,160 +48,245 @@ exitm() {
     exit "$1"
 }
 
-
-flags_process() {
-    ARG1="$1"
-    C=0
-    F=""
-    TEMP=""
-    for i in $(echo $ARG1 | sed -e 's/\(.\)/\1\n/g');
-    do
-        if [[ $i == "-" ]]; then
-            if [[ $C == 2 ]]; then
-                C=1
-                F+=$TEMP
-                TEMP=""
-            else
-                C=2
-            fi
-        else
-            if [[ $C == 1 ]];then
-                F+="-$i"
-            else
-                TEMP+=$i
-            fi
-        fi
-    done
-    [[ "$ARG1" == *"--sync"* ]] || [[ "$ARG1" == *!(-)"-S"* ]] && SYNC=true
-    [[ "$ARG1" == *"--search"* ]] || [[ "$ARG1" == *!(-)"-s"* ]] && SEARCH=true
-    [[ "$ARG1" == *"--update"* ]] || [[ "$ARG1" == *!(-)"-u"* ]] && UPDATE=true
-    echo 
-}
-
-update() {
-exit
-}
-
-refresh() {
-exit
-}
-
-search() {
-    curl -s "https://aur.archlinux.org/rpc/?v=5&type=search&arg=$1" | jq '.results[] | {Name,Description}'
-}
-
-install() {
-    i="$1" # package name
+install_aur_pkg() {
+    i="$1"
     msg_info "Building $i"
-    SRCDIR="$CACHEDIR/packaging/$i"
-    # fetching the AUR Source
-    if [[ ! -d "$CACHEDIR/packaging/$i" ]]; then
-        git clone --depth=1 https://aur.archlinux.org/$i.git "$CACHEDIR/packaging/$i" || msg_error "Cannot download PKGBUILD"
-        cd "$SRCDIR"
-    else
-        cd "$SRCDIR"
-        git reset --hard
-        git pull
+    SRCDIR=$CACHEDIR/packaging/$i
+    if [ ! -f "$CACHEDIR/archive/$i.tar.gz" ]; then
+        curl -L -o "$CACHEDIR/archive/$i.tar.gz" "https://aur.archlinux.org/cgit/aur.git/snapshot/$i.tar.gz" || msg_error "Couldn't download PKGBUILD"
     fi
-    echo -n "${SELF}? Wanna see PKGBUILD? [y/n] "
+    tar xzf "$CACHEDIR/archive/$i.tar.gz" -C "$CACHEDIR/packaging" || msg_error "Couldn't extact file"
+    cd "$SRCDIR"
+    echo -n "$SELF: Wanna see PKGBUILD? [y/n] "
     read q1
-    if [[ "$q1" == "y" ]]; then
+    if [ "$q1" == "y" ]; then
     	less PKGBUILD
     fi
-    echo -n "${SELF}? Start building ${i}? [y/n] "
+    echo -n "$SELF: Start building ${i}? [y/n] "
     read prompt
-    if [[ ! "$prompt" == "y" ]]; then
-    	msg_error "Interrupted!"
+    if [ ! "$prompt" == "y" ]; then
+	rm -rf "$CACHEDIR/packaging/$i"
+	rm -rf "$CACHEDIR/archive/$i.tar.gz"
+    	msg_error Interrupted!
     fi
-    # Override: srcpatch
-    if [[ -d "$CONFIGDIR/overrides/$i/srcpatch" ]];
+    if [ -d "$CONFIGDIR/overrides/$i/srcpatch" ];
     then
         msg_info "Patching"
-        for j in "$(ls $CONFIGDIR/overrides/$i/srcpatch/)";
+        for j in $(ls $CONFIGDIR/overrides/$i/srcpatch/)
         do
 	    patch -p1 < "$CONFIGDIR/overrides/$i/srcpatch/$j"
-	    msg_info "Patched $j !" || {
-                echo -n "$SELF: Failed to patch. Ignore it and continue? [y/n] "
-		read prompt2
-                if [[ ! "$prompt2" == "y" ]]; then
-		    msg_error Interrupted
-		fi
-            }
+	        msg_info "Patched $j !" || {
+                    echo -n "$SELF: Failed to patch. Ignore it and continue? [y/n] "
+					read prompt2
+                    if [ ! "$prompt2" == "y" ]; then
+						msg_error Interrupted
+					fi
+                }
         done
     fi
 
-    # Override: srccopy
-    if [[ -d "$CONFIGDIR/overrides/$i/srccopy" ]];
+    
+    if [ -d $"CONFIGDIR/overrides/$i/srccopy" ];
     then
-	cp -rv "$CONFIGDIR/overrides/$i/srccopy/"* "$SRCDIR"
+	cp -rv "$CONFIGDIR/overrides/$i/srccopy/*" "$SRCDIR" # i don't know why everything is doing so useless code parts. every path sould be double quoted
     fi
-    # Downloading sources
-    makepkg -o
-    # Override: copy
-    if [[ -d "$CONFIGDIR/overrides/$i/copy" ]];
+    makepkg -s -o || msg_error "Couldn't execute makepkg"
+    if [ -d "$CONFIGDIR/overrides/$i/copy" ];
     then
-	cp -rv "$CONFIGDIR/overrides/$i/copy/"* "$SRCDIR/src"
+	cp -rv "$CONFIGDIR/overrides/$i/copy/*" "$SRCDIR/src" # again...
     fi
     cd src/
-    # Override: patch
-    if [[ -d "$CONFIGDIR/overrides/$i/patch" ]];
+    if [ -d "$CONFIGDIR/overrides/$i/patch" ];
     then
         msg_info "Patching"
-        for j in "$(ls $CONFIGDIR/overrides/$i/patch/)"
+        for j in $(ls $CONFIGDIR/overrides/$i/patch/) # agaaaaain
         do
-	    patch < "$CONFIGDIR/overrides/$i/patch/$j" &&
+	    patch -p1 < "$CONFIGDIR/overrides/$i/patch/$j"
 	        msg_info "Patched $j !" || {
-                    read -rp "Failed Patch $j! Do you want to continue without it? " prompt;
-                    [[ $prompt == "n" ]] || [[ $prompt == "no" ]] && exitm 1
+                    read -rp "$SELF: Failed Patch $j! Do you want to continue without it? [y/n] " prompt3
+                    if [ ! "$prompt3" == "y" ]; then
+						msg_error Interrupted!
+					fi
                 }
         done
     fi
     cd ..
-    # Build Package
     makepkg -sci || {
-    if [[ "$?" == "1" ]]; then
-        read -rp "Do you want to disable verify checks? ${SELF}? [y/n] " prompt
-        if [[ $prompt == "y" ]];
-        then
-	    makepkg -sci --skipinteg;
-        fi
-    fi
+	read -rp "$SELF: Do you want to disable verify checks? [y/n] " prompt
+	if [[ $prompt == "y" ]];
+	then
+	    makepkg -sci --skipinteg
+	fi
     }
 }
-PACKAGES=""
-ARGS=$*
-if [[ -z $ARGS ]]
-then
-    
-    pacman -Syu
-    for i in $(cat "$CONFIGDIR/Packages");
-    do
-	install $i
-    done
-else
-    FLAGS=""
-    PACKAGES=""
-    for i in $ARGS;
-    do
-        [[ $(echo $i | cut -c 1) == "-" ]] && FLAGS+="${i}" || PACKAGES+="$i "
-    done
-    # parsing flags
-    SYNC=false
-    SEARCH=false
-    UPDATE=false
-    [[ -z $FLAGS ]] && FLAGS="-S"
-    # echo $FLAGS
-    flags_process $FLAGS
-    # echo $SYNC $SEARCH $UPDATE
-    if $SEARCH; then
-        for i in "$(echo $PACKAGES | sed 's/ /\n/g')";
+install_aur_pkg_nc() {
+    i="$1"
+    msg_info "Building $i"
+    SRCDIR=$CACHEDIR/packaging/$i
+    if [ ! -f "$CACHEDIR/archive/$i.tar.gz" ]; then
+        curl -L -o "$CACHEDIR/archive/$i.tar.gz" "https://aur.archlinux.org/cgit/aur.git/snapshot/$i.tar.gz" || msg_error "Couldn't download PKGBUILD"
+    fi
+    tar xzf "$CACHEDIR/archive/$i.tar.gz" -C "$CACHEDIR/packaging" || msg_error "Couldn't extact file"
+    cd "$SRCDIR"
+    if [ -d "$CONFIGDIR/overrides/$i/srcpatch" ];
+    then
+        msg_info "Patching"
+        for j in $(ls $CONFIGDIR/overrides/$i/srcpatch/)
         do
-            search $i
-        done
-    elif $SYNC; then
-        for i in "$(echo $PACKAGES | sed 's/ /\n/g')";
-        do
-            install $i
+	    patch -p1 < "$CONFIGDIR/overrides/$i/srcpatch/$j"
+	        msg_info "Patched $j !" || {
+                    msg_error "Failed to patch ${j}!"
+                }
         done
     fi
-fi
+
+    
+    if [ -d $"CONFIGDIR/overrides/$i/srccopy" ];
+    then
+	cp -rv "$CONFIGDIR/overrides/$i/srccopy/*" "$SRCDIR" # i don't know why everything is doing so useless code parts. every path sould be double quoted
+    fi
+    makepkg -s -o --noconfirm || msg_error "Couldn't execute makepkg"
+    if [ -d "$CONFIGDIR/overrides/$i/copy" ];
+    then
+	cp -rv "$CONFIGDIR/overrides/$i/copy/*" "$SRCDIR/src" # again...
+    fi
+    cd src/
+    if [ -d "$CONFIGDIR/overrides/$i/patch" ];
+    then
+        msg_info "Patching"
+        for j in $(ls $CONFIGDIR/overrides/$i/patch/) # agaaaaain
+        do
+	    patch -p1 < "$CONFIGDIR/overrides/$i/patch/$j"
+	        msg_info "Patched $j !" || {
+                    msg_error "Failed to patch ${j}!"
+                }
+        done
+    fi
+    cd ..
+    makepkg -sci --noconfirm || {
+	read -rp "$SELF: Do you want to disable verify checks? [y/n] " prompt
+	if [[ $prompt == "y" ]];
+	then
+	    makepkg -sci --skipinteg --noconfirm
+	fi
+    }
+}
+
+case "$1" in
+	-A)
+		pkg_aur_list="$(echo $* | sed 's/-A //')"
+		if [ "$pkg_aur_list" == "" ]; then
+			msg_error Specify packages to install!
+		fi
+		for listpkg in $pkg_aur_list; do
+			if [ "$(/usr/bin/package-query -A -Q --insecure -i $listpkg)" == "" ]; then
+				msg_error "Package $listpkg doesn't exists in AUR!"
+			fi
+			install_aur_pkg $listpkg # install package
+			rm -rf "$CACHEDIR/packaging/$listpkg"
+			rm -rf "$CACHEDIR/archive/$listpkg.tar.gz"
+		done
+		exit 0
+		;;
+	-An)
+		pkg_aur_list="$(echo $* | sed 's/-An //')"
+		if [ "$pkg_aur_list" == "" ]; then
+			msg_error Specify packages to install!
+		fi
+		for listpkg in $pkg_aur_list; do
+			if [ "$(/usr/bin/package-query -A -Q --insecure -i $listpkg)" == "" ]; then
+				msg_error "Package $listpkg doesn't exists in AUR!"
+			fi
+			install_aur_pkg_nc $listpkg # install package
+			rm -rf "$CACHEDIR/packaging/$listpkg"
+			rm -rf "$CACHEDIR/archive/$listpkg.tar.gz"
+		done
+		exit 0
+		;;
+	-C)
+		msg_info "Removing Cache Dir"
+		rm -rf "$CACHEDIR"
+		exit 0
+		;;
+	-Ss)
+		search_string="$(echo $* | sed 's/-Ss //')"
+		/usr/bin/package-query -A -Q --insecure -s "$search_string"
+		/usr/bin/pacman -Ss "$search_string"
+		exit 0
+		;;
+	-G)
+	    get_pkg_list="$(echo $* | sed 's/-G //')"
+	    	for listpkg in $get_pkg_list; do
+			if [ "$(/usr/bin/package-query -A -Q --insecure -i $listpkg)" == "" ]; then
+				msg_error "Package $listpkg doesn't exists in AUR!"
+			fi
+			msg_info "Downloading package ${listpkg}'s PKGBUILD to current directory"
+			curl -L -o ./$listpkg.PKGBUILD "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=$listpkg" || die "Couldn't download file!"
+			msg_info "AUR/$listpkg/PKGBUILD --> $(pwd)/$listpkg.PKGBUILD"
+			exit 0
+	    	done
+		;;
+	-V)
+		msg_info "You're running $SELF version $SELF_VER"
+		exit 0
+		;;
+	-P)
+		if [ ! -d "$2" ]; then
+			msg_error "This path doesn't exist"
+		fi
+		cd "$2"
+		makepkg -s || die "makepkg returned error"
+		exit 0
+		;;
+	-Pi)
+		if [ ! -d "$2" ]; then
+			msg_error "This path doesn't exist"
+		fi
+		cd "$2"
+		makepkg -si || die "makepkg returned error"
+		exit 0
+		;;
+	-Pn)
+		if [ ! -d "$2" ]; then
+			msg_error "This path doesn't exist"
+		fi
+		cd "$2"
+		makepkg -s --noconfirm || die "makepkg returned error"
+		exit 0
+		;;
+	-Pni)
+		if [ ! -d "$2" ]; then
+			msg_error "This path does't exist"
+		fi
+		cd "$2"
+		makepkg -si --noconfirm || die "makepkg returned error"
+		exit 0
+		;;
+	--help)
+		msg_info "$SELF - fork of $SELF aur helper."
+		msg_info "Usage: $SELF {OPTION} package1 package2..."
+		msg_info "Options:"
+		msg_info "-A          | build aur packages"
+		msg_info "-An         | build aur packages, don't ask for anything"
+		msg_info "-C          | clean cache"
+		msg_info "-Ss         | search for packages in aur and repos"
+		msg_info "-G          | get PKGBUILD of package"
+		msg_info "-V          | display version of $SELF and exit"
+		msg_info "-P          | build package from specified directory"
+		msg_info "-Pi         | the same as previous, but installs after building"
+		msg_info "-Pn         | the same as '-P', but doesn't asks for anything"
+		msg_info "-Pni        | the same as previous, but installs after building"
+		msg_info "--help      | show this help"
+		msg_info "Any other arguments will be piped to pacman"
+		msg_info "Visit projects website at http://codeberg.org/glowiak/pakka"
+		exit 0
+		;;
+	"")
+		msg_info "No arguments given. Type '$SELF --help' for help"
+		exit 0
+		;;
+	*)
+		sudo pacman $*
+		exit 0
+		;;
+esac
