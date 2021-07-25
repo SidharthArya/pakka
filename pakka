@@ -165,7 +165,7 @@ else
     echo $SYNC $SEARCH $UPDATE
     if $SYNC;
     then
-        for i in "$(echo $PACKAGES | sed 's/ /\n/g')";
+        for i in $(echo $PACKAGES | sed 's/ /\n/g')
         do
             install $i
         done
