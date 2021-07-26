@@ -15,7 +15,7 @@ if [[ ! -f "$CONFIGDIR/config" ]]; then
 fi
 
 . "$CONFIGDIR/config"
-
+CACHEDIR=${CACHEDIR:-$HOME/.cache/pakka}
 mkdir -p "$CACHEDIR/packaging"
 mkdir -p "$CACHEDIR/packages"
 
@@ -78,7 +78,7 @@ exit
 }
 
 search() {
-    curl -s "https://aur.archlinux.org/rpc/?v=5&type=search&arg=$1" | jq '.results[] | {Name,Description}'
+    curl -s "https://aur.archlinux.org/rpc/?v=5&type=search&arg=$1" | jq '.results[] | {Name,Description}' || msg_error "Cannot query database"
 }
 
 install() {
@@ -157,6 +157,9 @@ install() {
 	    makepkg -sci --skipinteg;
         fi
     fi
+    PACKAGE=$(ls *.zst)
+    mv $PACKAGE "$CACHEDIR/packages/"
+    ln -s $CACHEDIR/packages/$PACKAGE $PACKAGE
     }
 }
 PACKAGES=""
@@ -164,7 +167,7 @@ ARGS=$*
 if [[ -z $ARGS ]]
 then
     
-    pacman -Syu
+    sudo pacman -Syu
     for i in $(cat "$CONFIGDIR/Packages");
     do
 	install $i

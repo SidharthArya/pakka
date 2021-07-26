@@ -22,9 +22,10 @@ What do I eventually want?
 + [ ] Become a pacman complient AUR wrapper
 
 * Lacking Features
-+ [ ] Searching the AUR database
-+ [ ] Dependency Resolution
++ [X] Searching the AUR database
++ [ ] Dependency Resolution (To be specific, AUR dependency resolution)
 + [ ] Autocleaning build directory
++ [ ] Check whether the current package version is already installed
 *  Getting Started
 Download the pakka script and place it in your PATH.
 #+begin_src bash
