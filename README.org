@@ -1,6 +1,6 @@
 #+TITLE: Pakka
 #+AUTHOR: Sidharth Arya
-
+[[http://aur.archlinux.org/packages/pakka][file:https://img.shields.io/aur/version/pakka.svg]] [[http://aur.archlinux.org/packages/pakka][file:https://img.shields.io/aur/license/pakka.svg]]
 [Currently Experimental]
 
 A simple bash based AUR helper for Arch Linux.
