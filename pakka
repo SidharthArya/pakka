@@ -4,18 +4,17 @@ set -eEu
 set -o pipefail
 IFS=$'\n\t'
 SELF=Pakka
-SELF_VERSION="0.0.1"
+SELF_VERSION="0.0.2"
 # CWD=$(pwd)
 
 CONFIGDIR=${CONFIGDIR:-$HOME/.config/pakka}
+CACHEDIR=${CACHEDIR:-$HOME/.cache/pakka}
 # When the config file doesn't exists, exit.
 if [[ ! -f "$CONFIGDIR/config" ]]; then
-	echo "$SELF: Cannot load config file. Exiting"
-	exit 1
+	echo "$SELF: config file not found, using the defaults"
 fi
 # Source 
-source "$CONFIGDIR/config"
-CACHEDIR=${CACHEDIR:-$HOME/.cache/pakka}
+. "$CONFIGDIR/config"
 mkdir -p "$CACHEDIR/packaging"
 mkdir -p "$CACHEDIR/packages"
 
