@@ -1,21 +1,19 @@
 #!/usr/bin/env bash
 # pakka - An AUR/custom helper for Arch Linux
-set -eEu
-set -o pipefail
+#set -eEu
+#set -o pipefail # pakka doesn't work with dash (nothing works with dash btw)
 IFS=$'\n\t'
 SELF=Pakka
-SELF_VERSION="0.0.1"
+SELF_VERSION="0.0.3"
 # CWD=$(pwd)
 
 CONFIGDIR=${CONFIGDIR:-$HOME/.config/pakka}
-# When the config file doesn't exists, exit.
+CACHEDIR=${CACHEDIR:-$HOME/.cache/pakka} # allow overriding
 if [[ ! -f "$CONFIGDIR/config" ]]; then
-	echo "$SELF: Cannot load config file. Exiting"
-	exit 1
+	echo "$SELF: config file doesn't exists, so using the defaults"
 fi
-# Source 
-source "$CONFIGDIR/config"
-CACHEDIR=${CACHEDIR:-$HOME/.cache/pakka}
+# dot it much more universal
+. "$CONFIGDIR/config"
 mkdir -p "$CACHEDIR/packaging"
 mkdir -p "$CACHEDIR/packages"
 
@@ -86,7 +84,9 @@ exit
 }
 
 search() {
-    curl -s "https://aur.archlinux.org/rpc/?v=5&type=search&arg=$1" | jq '.results[] | {Name,Description}' || msg_error "Cannot query database"
+	# package-query will do better work here
+	#curl -s "https://aur.archlinux.org/rpc/?v=5&type=search&arg=$1" | jq '.results[] | {Name,Description}' || msg_error "Cannot query database"
+	/usr/bin/package-query -A -Q --insecure -i "$*" # apt-get is stupid, due to searching only for first result
 }
 
 install() {
@@ -200,14 +200,14 @@ else
         msg_info "$SELF: $SELF_VERSION"
     fi
     if $SEARCH; then
-        for i in "$(echo $PACKAGES | sed 's/ /\n/g')";
+        for i in $(echo $PACKAGES | sed 's/ /\n/g');
         do
-            search $i
+            search "$i"
         done
     elif $SYNC; then
-        for i in "$(echo $PACKAGES | sed 's/ /\n/g')";
+        for i in $(echo $PACKAGES | sed 's/ /\n/g');
         do
-            install $i
+            install "$i"
         done
     fi
 fi
