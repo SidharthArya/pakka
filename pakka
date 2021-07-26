@@ -4,9 +4,8 @@ set -eEu
 set -o pipefail
 IFS=$'\n\t'
 SELF=Pakka
-SELF_PROG=$0
 SELF_VERSION="0.0.1"
-CWD=$(pwd)
+# CWD=$(pwd)
 
 CONFIGDIR=${CONFIGDIR:-$HOME/.config/pakka}
 # When the config file doesn't exists, exit.
@@ -48,7 +47,7 @@ flags_process() {
     S="" # Short form option
     TEMP=""
     LC=""
-    for i in $(echo $ARG1 | sed -e 's/\(.\)/\1\n/g');
+    for i in $(echo "$ARG1" | sed -e 's/\(.\)/\1\n/g');
     do
         if [[ $i == "-" ]]; then
             if [[ $C == 2 ]]; then
@@ -96,7 +95,7 @@ install() {
     SRCDIR="$CACHEDIR/packaging/$i"
     # fetching the AUR Source
     if [[ ! -d "$CACHEDIR/packaging/$i" ]]; then
-        git clone --depth=1 https://aur.archlinux.org/$i.git "$CACHEDIR/packaging/$i" || msg_error "Cannot download PKGBUILD"
+        git clone --depth=1 "https://aur.archlinux.org/$i.git" "$CACHEDIR/packaging/$i" || msg_error "Cannot download PKGBUILD"
         cd "$SRCDIR"
     else
         cd "$SRCDIR"
@@ -104,12 +103,12 @@ install() {
         git pull
     fi
     echo -n "${SELF}? Wanna see PKGBUILD? [y/n] "
-    read q1
+    read -r q1
     if [[ "$q1" == "y" ]]; then
     	less PKGBUILD
     fi
     echo -n "${SELF}? Start building ${i}? [y/n] "
-    read prompt
+    read -r prompt
     if [[ ! "$prompt" == "y" ]]; then
     	msg_error "Interrupted!"
     fi
@@ -117,12 +116,12 @@ install() {
     if [[ -d "$CONFIGDIR/overrides/$i/srcpatch" ]];
     then
         msg_info "Patching"
-        for j in "$(ls $CONFIGDIR/overrides/$i/srcpatch/)";
+        for j in "$CONFIGDIR/overrides/$i/srcpatch/"*;
         do
 	    patch -p1 < "$CONFIGDIR/overrides/$i/srcpatch/$j"
 	    msg_info "Patched $j !" || {
                 echo -n "$SELF: Failed to patch. Ignore it and continue? [y/n] "
-		read prompt2
+		read -r prompt2
                 if [[ ! "$prompt2" == "y" ]]; then
 		    msg_error Interrupted
 		fi
@@ -147,7 +146,7 @@ install() {
     if [[ -d "$CONFIGDIR/overrides/$i/patch" ]];
     then
         msg_info "Patching"
-        for j in "$(ls $CONFIGDIR/overrides/$i/patch/)"
+        for j in "$CONFIGDIR/overrides/$i/patch/"*;
         do
 	    patch < "$CONFIGDIR/overrides/$i/patch/$j" &&
 	        msg_info "Patched $j !" || {
@@ -166,9 +165,9 @@ install() {
 	    makepkg -sci --skipinteg;
         fi
     fi
-    PACKAGE=$(ls *.zst)
-    mv $PACKAGE "$CACHEDIR/packages/"
-    ln -s $CACHEDIR/packages/$PACKAGE $PACKAGE
+    PACKAGE=$(ls ./*.zst)
+    mv "$PACKAGE" "$CACHEDIR/packages/"
+    ln -s "$CACHEDIR/packages/$PACKAGE" "$PACKAGE"
     }
 }
 PACKAGES=""
@@ -179,14 +178,14 @@ then
     sudo pacman -Syu
     for i in $(cat "$CONFIGDIR/Packages");
     do
-	install $i
+	install "$i"
     done
 else
     FLAGS=""
     PACKAGES=""
     for i in $ARGS;
     do
-        [[ $(echo $i | cut -c 1) == "-" ]] && FLAGS+="${i}" || PACKAGES+="$i "
+        [[ $(echo "$i" | cut -c 1) == "-" ]] && FLAGS+="${i}" || PACKAGES+="$i "
     done
     # parsing flags
     SYNC=false
