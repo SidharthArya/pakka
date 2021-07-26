@@ -42,7 +42,7 @@ pakka -S st dwm
 #+end_src
 ** Updating Packages
 #+begin_src bash
-  pakka -Syu st
+  pakka -Su st
   
 #+end_src
 Incase you just want to build the package you can just run the script with curl
