@@ -5,6 +5,7 @@ set -o pipefail
 IFS=$'\n\t'
 SELF=Pakka
 SELF_PROG=$0
+SELF_VERSION="0.0.1"
 CWD=$(pwd)
 
 CONFIGDIR=${CONFIGDIR:-$HOME/.config/pakka}
@@ -13,8 +14,8 @@ if [[ ! -f "$CONFIGDIR/config" ]]; then
 	echo "$SELF: Cannot load config file. Exiting"
 	exit 1
 fi
-
-. "$CONFIGDIR/config"
+# Source 
+source "$CONFIGDIR/config"
 CACHEDIR=${CACHEDIR:-$HOME/.cache/pakka}
 mkdir -p "$CACHEDIR/packaging"
 mkdir -p "$CACHEDIR/packages"
@@ -43,29 +44,37 @@ exitm() {
 flags_process() {
     ARG1="$1"
     C=0
-    F=""
+    F="" # full form option
+    S="" # Short form option
     TEMP=""
+    LC=""
     for i in $(echo $ARG1 | sed -e 's/\(.\)/\1\n/g');
     do
         if [[ $i == "-" ]]; then
             if [[ $C == 2 ]]; then
                 C=1
-                F+=$TEMP
+                F+="--$TEMP"
                 TEMP=""
-            else
+            elif [[ $LC == "-" ]]; then
                 C=2
+            else
+                C=1
             fi
         else
             if [[ $C == 1 ]];then
-                F+="-$i"
+                S+="-$i"
             else
                 TEMP+=$i
             fi
         fi
+        LC=$i
+        # echo $i
     done
-    [[ "$ARG1" == *"--sync"* ]] || [[ "$ARG1" == *!(-)"-S"* ]] && SYNC=true
-    [[ "$ARG1" == *"--search"* ]] || [[ "$ARG1" == *!(-)"-s"* ]] && SEARCH=true
-    [[ "$ARG1" == *"--update"* ]] || [[ "$ARG1" == *!(-)"-u"* ]] && UPDATE=true
+    F+="--$TEMP"
+    [[ "$F" == *"--sync"* ]] || [[ "$S" == *!(-)"-S"* ]] && SYNC=true
+    [[ "$F" == *"--search"* ]] || [[ "$S" == *!(-)"-s"* ]] && SEARCH=true
+    [[ "$F" == *"--update"* ]] || [[ "$S" == *!(-)"-u"* ]] && UPDATE=true
+    [[ "$F" == *"--version"* ]] || [[ "$S" == *!(-)"-V"* ]] && GIVE_VERSION=true
     echo 
 }
 
@@ -183,10 +192,14 @@ else
     SYNC=false
     SEARCH=false
     UPDATE=false
+    GIVE_VERSION=false
     [[ -z $FLAGS ]] && FLAGS="-S"
     # echo $FLAGS
     flags_process $FLAGS
     # echo $SYNC $SEARCH $UPDATE
+    if $GIVE_VERSION; then
+        msg_info "$SELF: $SELF_VERSION"
+    fi
     if $SEARCH; then
         for i in "$(echo $PACKAGES | sed 's/ /\n/g')";
         do
