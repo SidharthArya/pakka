@@ -32,9 +32,18 @@ Download the pakka script and place it in your PATH.
   curl --output ~/.local/bin/pakka https://raw.githubusercontent.com/SidharthArya/pakka/master/pakka
   chown +x ~/.local/bin/pakka
 #+end_src
-At the moment, you do not pass any flags to the pakka script. Just the name of the packages you want to install.
+** Installing Packages
 #+begin_src bash
-pakka st dwm
+pakka -S st dwm
+#+end_src
+** Searching Packages
+#+begin_src bash
+  pakka -s paru
+#+end_src
+** Updating Packages
+#+begin_src bash
+  pakka -Syu st
+  
 #+end_src
 Incase you just want to build the package you can just run the script with curl
 #+begin_src bash
