@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # pakka - An AUR/custom helper for Arch Linux
 set -eEu
 set -o pipefail
