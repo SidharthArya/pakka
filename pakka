@@ -8,11 +8,7 @@ SELF_VERSION="0.0.1"
 # CWD=$(pwd)
 
 CONFIGDIR=${CONFIGDIR:-$HOME/.config/pakka}
-# When the config file doesn't exists, exit.
-if [[ ! -f "$CONFIGDIR/config" ]]; then
-	echo "$SELF: Cannot load config file. Exiting"
-	exit 1
-fi
+
 # Source 
 source "$CONFIGDIR/config"
 CACHEDIR=${CACHEDIR:-$HOME/.cache/pakka}
@@ -73,8 +69,9 @@ flags_process() {
     [[ "$F" == *"--sync"* ]] || [[ "$S" == *!(-)"-S"* ]] && SYNC=true
     [[ "$F" == *"--search"* ]] || [[ "$S" == *!(-)"-s"* ]] && SEARCH=true
     [[ "$F" == *"--update"* ]] || [[ "$S" == *!(-)"-u"* ]] && UPDATE=true
+    [[ "$F" == *"--refresh"* ]] || [[ "$S" == *!(-)"-y"* ]] && REFRESH=true
     [[ "$F" == *"--version"* ]] || [[ "$S" == *!(-)"-V"* ]] && GIVE_VERSION=true
-    echo 
+    echo
 }
 
 update() {
@@ -82,7 +79,7 @@ exit
 }
 
 refresh() {
-exit
+    sudo pacman -Sy
 }
 
 search() {
@@ -102,12 +99,12 @@ install() {
         git reset --hard
         git pull
     fi
-    echo -n "${SELF}? Wanna see PKGBUILD? [y/n] "
+    echo -n "Skip seeing PKGBUILD? ${SELF}? [y/n] "
     read -r q1
-    if [[ "$q1" == "y" ]]; then
+    if [[ "$q1" == "n" ]]; then
     	less PKGBUILD
     fi
-    echo -n "${SELF}? Start building ${i}? [y/n] "
+    echo -n "Start building ${i}? ${SELF}? [y/n] "
     read -r prompt
     if [[ ! "$prompt" == "y" ]]; then
     	msg_error "Interrupted!"
@@ -158,7 +155,8 @@ install() {
     cd ..
     # Build Package
     makepkg -sci || {
-    if [[ "$?" == "1" ]]; then
+        ERROR="$?"
+    if [[ "$ERROR" == "1" ]]; then
         read -rp "Do you want to disable verify checks? ${SELF}? [y/n] " prompt
         if [[ $prompt == "y" ]];
         then
@@ -172,7 +170,7 @@ install() {
 }
 PACKAGES=""
 ARGS=$*
-if [[ -z $ARGS ]]
+if [[ -z $ARGS ]];
 then
     
     sudo pacman -Syu
@@ -187,17 +185,24 @@ else
     do
         [[ $(echo "$i" | cut -c 1) == "-" ]] && FLAGS+="${i}" || PACKAGES+="$i "
     done
+    if [[ -z $PACKAGES ]]; then
+        PACKAGES=$(cat "$CONFIGDIR/Packages");
+    fi
     # parsing flags
     SYNC=false
     SEARCH=false
     UPDATE=false
+    REFRESH=false
     GIVE_VERSION=false
     [[ -z $FLAGS ]] && FLAGS="-S"
     # echo $FLAGS
     flags_process $FLAGS
-    # echo $SYNC $SEARCH $UPDATE
+    echo $SYNC $SEARCH $UPDATE $REFRESH
     if $GIVE_VERSION; then
         msg_info "$SELF: $SELF_VERSION"
+    fi
+    if $REFRESH; then
+        refresh
     fi
     if $SEARCH; then
         for i in "$(echo $PACKAGES | sed 's/ /\n/g')";

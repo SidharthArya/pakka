@@ -20,6 +20,7 @@ What do I eventually want?
 + [ ] Ability to easily patch the source without the need for explicitely having patch codes in the aur makefiles
 + [ ] Eventually move to per block diffs for customizing AUR PKGBUILD's
 + [ ] Become a pacman complient AUR wrapper
++ [ ] Create a highly reproducible Arch Linux
 
 * Lacking Features
 + [X] Searching the AUR database
