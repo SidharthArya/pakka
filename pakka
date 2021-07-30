@@ -163,7 +163,7 @@ install() {
 	    makepkg -sci --skipinteg;
         fi
     fi
-    PACKAGE=$(ls ./*.zst)
+    PACKAGE=$(ls ./*.pkg.ta*)
     mv "$PACKAGE" "$CACHEDIR/packages/"
     ln -s "$CACHEDIR/packages/$PACKAGE" "$PACKAGE"
     }
